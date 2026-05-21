@@ -28,6 +28,7 @@ class ProcessIncomingCallJob implements ShouldQueue
                 return [null, null];
             }
 
+            // Надеемся что номер телефона нормализован, иначе будут баги с поиском номеров начинающихся с +, 7 или 8
             $client = Client::where('phone', $call->phone)->select(['id'])->first();
             if ($client) {
                 $call->client_id = $client->id;
@@ -71,7 +72,9 @@ class ProcessIncomingCallJob implements ShouldQueue
 
         try {
             // Подразумеваем, что в случае ошибки всплывёт специфичное исключение.
-            // Если бы возвращался какой-нибудь response, то проверять можно было бы его.
+            // Если бы возвращался какой-нибудь response, то проверять можно было бы его, но лучше работать с исключениями.
+            // Также надеемся на наличие таймаутов внутри. Если их нет, а менять код TelephonyClient нежелательно, то нужно
+            // установить максимальное время выполнения для этой джобы.
             app(TelephonyClient::class)->sendCallAssigned($call->id, $operator->id);
         } catch (TelephonyException $e) {
             DB::transaction(function () use ($call, $operator) {
